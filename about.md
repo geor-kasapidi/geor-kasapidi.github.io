@@ -4,15 +4,10 @@ title: About
 permalink: /about/
 ---
 
-This is the whiteglass theme. You can find out more info about customizing your Jekyll theme, as well as basic Jekyll usage documentation at [jekyllrb.com](https://jekyllrb.com/)
+Welcome to my blog!
 
-You can find the source code for whiteglass at GitHub:
-[yous](https://github.com/yous) /
-[whiteglass](https://github.com/yous/whiteglass)
+My name is Geor, i am a professional software developer with over 10 years of experience.
 
-You can find the source code for Jekyll at GitHub:
-[jekyll][jekyll-organization] /
-[jekyll](https://github.com/jekyll/jekyll)
+Here you will find useful (hopefully) articles about swift, metal and programming in general.
 
-
-[jekyll-organization]: https://github.com/jekyll
+If you want to give feedback, feel free to [email](mailto:geor.kasapidi@icloud.com) me. You can also find me on [github](https://github.com/geor-kasapidi), [twitter](https://twitter.com/mood_tuna) and [linkedin](https://www.linkedin.com/in/geor-kasapidi-779507107).
