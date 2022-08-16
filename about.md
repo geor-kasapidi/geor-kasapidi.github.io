@@ -4,6 +4,8 @@ title: About
 permalink: /about/
 ---
 
+![my_photo](/assets/images/my_photo.png)
+
 Welcome to my blog!
 
 My name is Geor, i am a professional software developer with over 10 years of experience.
