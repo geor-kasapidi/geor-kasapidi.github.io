@@ -4,7 +4,9 @@ title: About
 permalink: /about/
 ---
 
+{:refdef: style="text-align: center;"}
 ![my_photo](/assets/images/my_photo.png)
+{:refdef}
 
 Welcome to my blog!
 

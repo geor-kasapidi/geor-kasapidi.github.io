@@ -1,9 +1,9 @@
 ---
 layout: post
 title:  "Improve Metal GPU utilization"
-date:   2022-08-15 15:00:00 +0300
+date:   2022-08-17 09:00:00 +0300
 categories: metal swift
-keywords: swift, metal, ios, command buffer, mtlcommandbuffer, mpscommandbuffer
+keywords: swift, metal, ios, command buffer, mtlcommandbuffer, mpscommandbuffer, gpu, programming
 ---
 Building a fast and efficient CPU<->GPU pipeline is not a trivial engineering task. Since the whole point of using a GPU in your computing is speed, you want to find the best way to use it. And the most obvious idea is to parallelize calculations between CPU and GPU. In this article, i want to show you a cool trick available since iOS 13 that will allow you to optimize your GPU usage.
 
@@ -13,9 +13,9 @@ But before we get into the tips and tricks section, let's revisit standard Metal
 
 ## Standard Metal flow
 
-Entry point for interacting with GPU in metal is device object (`MTLDevice`) with which you create command queue (`MTLCommandQueue`). Command queue creates command buffers (`MTLCommandBuffer`), and command buffers, in turn, create command encoders (`MTLRenderCommandEncoder`, `MTLComputeCommandEncoder`, etc.).
+The entry point for interaction with the GPU in metal is *device* object (`MTLDevice`), which creates a *command queue* (`MTLCommandQueue`). And the command queue creates *command buffers* (`MTLCommandBuffer`):
 
-![metal_flow](/assets/images/metal_flow.svg)
+![metal_flow](/assets/images/mpscommandbuffer/metal_flow.svg)
 
 You create one command queue instance and use it across your application:
 
@@ -27,27 +27,18 @@ else {
 }
 {% endhighlight %}
 
-And use that instance wherever you need GPU access, creating command buffers (and encoders):
+And use that instance wherever you need GPU access, creating command buffers:
 
 {% highlight swift %}
 let commandBuffer = commandQueue.makeCommandBuffer()!
-do {
-    let encoder = commandBuffer.makeComputeCommandEncoder()!
-    // ...
-    encoder.endEncoding()
-}
-do {
-    let encoder = commandBuffer.makeBlitCommandEncoder()!
-    // ...
-    encoder.endEncoding()
-}
+// command encoding
 commandBuffer.commit()
 commandBuffer.waitUntilCompleted()
 {% endhighlight %}
 
 In this code, the following happens: we encode commands into the buffer (it is very important to understand that at this point there is no real execution yet), then we commit the command buffer (send commands to the GPU) and wait for the GPU to complete its work. Thus, mixing CPU and GPU calculations in the code, we can see the following picture:
 
-![cpu_gpu_standard_flow](/assets/images/cpu_gpu_standard_flow.svg)
+![cpu_gpu_standard_flow](/assets/images/mpscommandbuffer/cpu_gpu_standard_flow.svg)
 
 Dotted line means `commit` + `waitUntilCompleted` calls.
 
@@ -59,7 +50,7 @@ To avoid idle processors, we will use a well-known approach.
 
 or double buffering:
 
-![cpu_gpu_double_buffering](/assets/images/cpu_gpu_double_buffering.svg)
+![cpu_gpu_double_buffering](/assets/images/mpscommandbuffer/cpu_gpu_double_buffering.svg)
 
 Dotted line means only the `commit` call of the command buffer. This call is non-blocking, so CPU can continue to encode new commands, while GPU is executing current ones. Thus, we have divided our command buffer into several, and this allows us to use our processors much more efficiently. As i said, this approach is well known, but has some limitations:
 
@@ -74,27 +65,19 @@ The second point is an advanced feature, but very important if you are deep into
 
 ## MPSCommandBuffer
 
-If you're familiar with Metal framework, you might know that most entities like `MTLDevice` and `MTLCommandQueue` are protocols. `MPSCommandBuffer` conforms to it, adding some extra features. The most useful of them is the `commitAndContinue` method. `MPSCommandBuffer` internally recreates the actual command buffer when you call `commitAndContinue` and ensures that any temporary objects remain valid after the command buffer is recreated.
+If you're familiar with Metal framework, you might know that most entities like `MTLDevice` and `MTLCommandQueue` are protocols. `MTLCommandBuffer` is also a protocol. `MPSCommandBuffer` conforms to it, adding some extra features. The most useful of them is the `commitAndContinue` method. `MPSCommandBuffer` internally recreates the actual command buffer when you call `commitAndContinue` and ensures that any temporary objects remain valid after the command buffer is recreated.
 
 {:refdef: style="text-align: center;"}
-![mps_command_buffer](/assets/images/mps_command_buffer.svg)
+![mps_command_buffer](/assets/images/mpscommandbuffer/mps_command_buffer.svg)
 {:refdef}
 
 Nothing changes for you as a developer, except for the additional method, you write the same command encoding code, replacing `let commandBuffer = commandQueue.makeCommandBuffer()!` with `let commandBuffer = MPSCommandBuffer(from: commandQueue)`. And every time you call `commitAndContinue` during command encoding, your GPU receives the next batch of commands:
 
 {% highlight swift %}
 let commandBuffer = MPSCommandBuffer(from: commandQueue)
-do {
-    let encoder = commandBuffer.makeComputeCommandEncoder()!
-    // ...
-    encoder.endEncoding()
-}
+// command encoding
 commandBuffer.commitAndContinue()
-do {
-    let encoder = commandBuffer.makeBlitCommandEncoder()!
-    // ...
-    encoder.endEncoding()
-}
+// command encoding
 commandBuffer.commit()
 commandBuffer.waitUntilCompleted()
 {% endhighlight %}
